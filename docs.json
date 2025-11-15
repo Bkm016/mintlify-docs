@@ -22,7 +22,6 @@
           {
             "group": "快速入门",
             "pages": [
-              "guides/installation",
               "guides/quickstart",
               "guides/cli"
             ]

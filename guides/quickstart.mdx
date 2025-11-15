@@ -5,4 +5,65 @@ description: "引导用户在本地运行第一个 Fluxon 脚本"
 
 # 快速开始
 
-> 内容筹备中，后续将包含示例脚本与执行步骤。
+Fluxon 的标准入口是 `org.tabooproject.fluxon.Fluxon`，可直接在 JVM 应用中加载脚本、执行表达式或编译字节码。下文以最小依赖链路呈现“添加依赖 → 调用 Fluxon API → 可选扩展”的流程。
+
+## 前提与依赖
+
+- **JDK**：8 或以上版本（`build.gradle.kts` 中的默认工具链）。
+- **构建工具**：Gradle 或 Maven。
+- **仓库**：`https://repo.tabooproject.org/repository/releases/`。
+
+在项目中添加依赖：
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven { url = uri("https://repo.tabooproject.org/repository/releases/") }
+}
+
+dependencies {
+    implementation("org.tabooproject.fluxon:fluxon-core:1.2.18")
+}
+```
+
+> `jsr223`, `console` 等扩展依赖仅在需要时才需加入。
+
+## 第一个 Fluxon 脚本（Fluxon.eval）
+
+`Fluxon.eval` 会在内部创建运行时环境、解析脚本并返回最后一个表达式的值：
+
+```java
+import org.tabooproject.fluxon.Fluxon;
+
+public class FluxonHello {
+    public static void main(String[] args) {
+        Object result = Fluxon.eval("print(\"Hello World\")");
+        System.out.println("script returned: " + result);
+    }
+}
+```
+
+若需要与宿主共享变量，可显式创建环境：
+
+```java
+import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+
+public class FluxonHello {
+
+    public static void main(String[] ars) {
+        Environment env = FluxonRuntime.getInstance().newEnvironment();
+        env.defineRootVariable("greeting", "Hi");
+        Fluxon.eval("print(&greeting + \", Fluxon!\")", env);
+    }
+}
+```
+
+同理，`Fluxon.compile` 可生成字节码以便缓存或嵌入，但对入门而言通常不需要。
+
+## 接下来
+
+- 阅读《语言参考》掌握语法细节。
+- 需要编译/构建或贡献代码时，请转到《开发者指南》。
+- 若要集成 VS Code、函数目录或其他工具，可查看《工具与生态》。 

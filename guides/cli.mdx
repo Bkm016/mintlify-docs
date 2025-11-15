@@ -5,4 +5,82 @@ description: "介绍 fluxon CLI、脚本执行与交互式体验"
 
 # 命令行与 REPL
 
-> 内容筹备中，将补充 CLI 参数、示例命令与调试技巧。
+Fluxon 附带一个简单的 REPL（`core-console` 模块中的 `FluxonConsole`），方便在终端里试验语法或跑几段脚本。本章用更贴近入门者的方式介绍它：如何启动、怎样输入脚本、有什么常用命令，以及出现异常时该怎么处理。
+
+## 启动控制台
+
+在仓库根目录复制执行以下命令即可自动构建并启动控制台：
+
+```bash
+# macOS / Linux（Bash）
+./gradlew :core-console:installDist && ./core-console/build/install/core-console/bin/core-console
+
+# Windows PowerShell
+./gradlew :core-console:installDist; .\core-console\build\install\core-console\bin\core-console.bat
+```
+
+如果只是想短时间试用，也可以直接运行：
+
+```bash
+./gradlew :core-console:run
+```
+
+无论选择哪种方式，都会启动 `org.tabooproject.fluxon.FluxonConsole` 并出现 `fluxon> ` 提示符；控制台会在用户家目录创建 `.fluxon_history` 保存历史记录。
+
+## 输入第一段脚本
+
+- 普通语句直接回车即可执行：
+
+```fluxon
+fluxon> print("Hello Fluxon")
+Hello Fluxon
+```
+
+- 每次执行的返回值会保存在特殊变量 `_`：
+
+```fluxon
+fluxon> 1 + 2
+3
+fluxon> &_ * 10
+30
+```
+
+- 与宿主变量交互时，仍可使用 `Fluxon.eval(script, env)` 构造好的环境，只不过在 REPL 里这些变量都存放在控制台内部的上下文中，`:vars` 命令可以查看它们。
+
+## 常用命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `:q`/`:quit`/`:exit` | 退出控制台。 |
+| `:c`/`:clear` | 清空当前已输入的脚本缓存，继续留在控制台。 |
+| `:l`/`:list` | 按行号列出本次会话输入的所有语句。 |
+| `:v`/`:vars` | 列出当前环境中的变量（含 `_`）。 |
+| `:h`/`:help` | 查看内置命令速览。 |
+| `Ctrl+C` | 取消当前行并清空缓存，不退出程序。 |
+| `Ctrl+D` | 直接结束程序。 |
+
+命令写法不区分大小写，但需要完整输入。
+
+## 查看变量
+
+执行几条语句再输入 `:vars`：
+
+```fluxon
+fluxon> username = "fluxon"
+fluxon> :vars
+[ENGINE_SCOPE]
+    username = fluxon
+    _ = fluxon
+```
+
+这能帮助你快速确认哪些变量已经定义，或 `_` 是否保存了想要的返回值。
+
+## 调试模式（可选）
+
+如果在排查语法问题，可在代码前加 `$`：
+
+```fluxon
+fluxon> $if &n <= 1 then 1 else factorial(&n - 1)
+```
+
+控制台会输出词法/语法分析结果以及伪代码树，便于定位错误。
