@@ -1,0 +1,51 @@
+---
+title: "扩展函数 API"
+description: "ExtensionBuilder 与环境中的扩展检索流程"
+---
+
+扩展函数允许你把 Fluxon 的上下文调用 (`target::func()`) 映射到任意 Java 方法。运行时代码分散在 `FluxonRuntime`, `ExtensionBuilder`, `Environment` 中，本节汇总相关 API。
+
+## ExtensionBuilder 链式写法
+
+```java
+FluxonRuntime runtime = FluxonRuntime.getInstance();
+runtime.registerExtension(File.class, "fs:io")
+       .function("readText", 0, ctx -> ...)
+       .async("copyTo", Arrays.asList(1, 2), ctx -> ...)
+       .primarySync("deleteRecursively", 0, ctx -> ...);
+```
+
+- `function(name, paramCount, callable)`：同步扩展。
+- `async(name, paramVariants, callable)`：异步扩展，内部等价于 `registerAsyncExtensionFunction`。
+- `primarySync`：需在主线程执行。
+
+`ExtensionBuilder` 只是语法糖，最终还是调用 `FluxonRuntime` 的注册方法。
+
+## 底层注册方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `registerExtensionFunction(Class<T>, String name, int paramCount, callable)` |
+| `registerExtensionFunction(type, namespace, name, List<Integer>, callable)` |
+| `registerAsyncExtensionFunction(...)` |
+| `registerSyncExtensionFunction(...)` |
+
+参数 `namespace` 可为 `null`，表示扩展无需 `import` 直接调用。
+
+## 运行时查找流程
+
+1. 解释器拿到 `target` 对象后，会确定其 `Class<?>`。
+2. `Environment#getExtensionFunction` 首先尝试通过 `systemExtensionFunctions`（烘焙时建立的二维数组）快速匹配。
+3. 如果找不到，回退到 `extensionFunctions` 中的名称 -> `Map<Class<?>, Function>`。
+4. 查找时先匹配完全相等的类型，再尝试 `isAssignableFrom`，确保子类也能复用父类扩展。
+
+## 复杂类型支持
+
+- 对于 `Path`, `Collection` 等类型，运行时已经内建扩展示例，可在 `core/runtime/function/extension` 包中参考。
+- 自定义类型若想支持索引访问 (`obj[index]`)，需要实现 `IndexAccessor`，详见《编译执行》章节。
+
+## 调试建议
+
+- 使用 `Environment#getRootExtensionFunctions()` 查看当前 namespace/类型映射。
+- 通过 `FluxonRuntime#getExtensionFunctions()` + `dumpFluxonCatalog` 确认导出的函数签名。
+- 如果上下文调用失败，检查是否正确导入命名空间（`import 'fs:io'`）或是否在 `ExtensionBuilder` 中声明了 namespace。

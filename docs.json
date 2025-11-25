@@ -30,8 +30,7 @@
             "group": "工具与生态",
             "pages": [
               "tooling/vscode",
-              "tooling/catalog",
-              "tooling/mintlify"
+              "tooling/catalog"
             ]
           }
         ]
@@ -50,30 +49,30 @@
             ]
           },
           {
-            "group": "内置与模式",
+            "group": "内置函数",
             "pages": [
-              "language/builtins",
-              "language/special-features"
+              "language/functions/system",
+              "language/functions/crypto",
+              "language/functions/file",
+              "language/functions/time"
             ]
           }
         ]
       },
       {
-        "tab": "运行时与嵌入",
+        "tab": "运行时",
         "groups": [
           {
-            "group": "架构",
+            "group": "解释执行",
             "pages": [
-              "runtime/architecture",
-              "runtime/concurrency"
+              "runtime/environment",
+              "runtime/interpreter"
             ]
           },
           {
-            "group": "集成",
+            "group": "编译执行",
             "pages": [
-              "runtime/cli-runtime",
-              "runtime/jsr223",
-              "runtime/java-integration"
+              "runtime/execution-engine"
             ]
           }
         ]
@@ -82,23 +81,23 @@
         "tab": "开发者指南",
         "groups": [
           {
-            "group": "参与贡献",
+            "group": "API 入口",
             "pages": [
-              "developer/contributing",
-              "developer/documentation"
+              "developer/runtime-registry",
+              "developer/export-bridge"
             ]
           },
           {
-            "group": "质量与交付",
+            "group": "扩展与注解",
             "pages": [
-              "developer/testing",
-              "developer/release",
-              "developer/best-practices"
+              "developer/extension-api",
+              "developer/annotations"
             ]
           },
           {
-            "group": "运维与排查",
+            "group": "集成与调试",
             "pages": [
+              "developer/runtime-config",
               "developer/troubleshooting"
             ]
           }

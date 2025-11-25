@@ -1,0 +1,59 @@
+---
+title: "@Export 与桥接"
+description: "ExportRegistry 如何生成 ClassBridge 并注册扩展函数"
+---
+
+`@Export` 是把 Java 类方法暴露给 Fluxon 的关键注解。核心实现位于 `core/runtime/java` 包，主要类有 `ExportRegistry`, `ExportMethod`, `ClassBridge`, `ExportBytecodeGenerator`。
+
+## 基本用法
+
+```java
+public final class HashObject {
+    public static final HashObject INSTANCE = new HashObject();
+
+    @Export
+    public String md5(String input) { ... }
+}
+
+FluxonRuntime runtime = FluxonRuntime.getInstance();
+runtime.getExportRegistry().registerClass(HashObject.class, "fs:crypto");
+```
+
+注册后即可在脚本中 `hash::md5("text")` 调用，命名空间 `fs:crypto` 会自动附加。
+
+## 注册流程
+
+1. `registerClass(clazz, namespace)` 扫描所有带 `@Export` 的方法。
+2. 使用 `StringUtils.transformMethodName` 去掉 `get` 前缀，例如 `getNow` -> `now`。
+3. 调用 `ExportBytecodeGenerator.generateClassBridge` 生成 `ClassBridge`，避免运行时反射。
+4. 分析方法参数：
+   - `@Optional` 标记为可选参数，自动生成多个 `paramCount`。
+   - `ExportMethod` 记录异步/同步标志（可通过注解属性扩展）。
+5. 根据方法属性选择 `registerExtensionFunction` / `registerAsyncExtensionFunction` / `registerSyncExtensionFunction`。
+
+## 方法签名校验
+
+- `ExportRegistry` 会在调用前使用 `Intrinsics.checkArgumentTypes` 校验参数，确保脚本传入的类型与 Java 方法兼容。
+- 返回值直接透传到 Fluxon，必要时可在方法内使用 `Coerce` 转换。
+
+## 自定义桥接
+
+如果只想注册部分方法，可先手动构造 `ExportMethod[]`：
+
+```java
+Method method = HashObject.class.getDeclaredMethod("md5", String.class);
+ExportMethod exportMethod = new ExportMethod(method, "md5");
+runtime.getExportRegistry().registerClassMethods(HashObject.class, "fs:crypto", new ExportMethod[]{exportMethod});
+```
+
+这在需要重命名或混合同步/异步方法时更灵活。
+
+## 调试 Tips
+
+- `FluxonRuntime#getExtensionFunctions()` 可验证注册结果，每个方法都会映射到 `Class<?> -> Function`。
+- 若新增 `@Export` 后未生效，检查：
+  1. 是否在运行时重新注册（`dumpFluxonCatalog` 也需要重跑）。
+  2. 方法是否被 `StringUtils.transformMethodName` 改名，与脚本调用保持一致。
+  3. 是否遗漏 `@Optional`，导致参数个数不匹配。
+
+掌握 `@Export` 与桥接流程后，可快速把现有 Java 工具类包装成 Fluxon 内置函数或扩展函数。

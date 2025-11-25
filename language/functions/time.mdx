@@ -1,0 +1,110 @@
+---
+title: "时间函数"
+---
+
+当前模块负责时间相关的获取与运算功能。  
+引用前需在脚本顶部导入命名空间：
+
+```ruby Fluxon
+import 'fs:time'
+```
+
+<Note>`fs:time` 内使用 `@Export` 修饰的 Java 方法会自动去掉 Getter 前缀，因此 `getNow()` 在脚本中以 `time::now()` 访问。</Note>
+
+## 基础时间值
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `now` | `now()` | 全局函数，返回 `System.currentTimeMillis()`。 |
+| `time::now()` | `time::now()` | 同 `now()`，提供链式上下文时的写法。 |
+| `time::nowSeconds()` | `time::nowSeconds()` | 当前秒级 Unix 时间戳。 |
+| `time::nano()` | `time::nano()` | 用于测量耗时，返回 `System.nanoTime()`。 |
+
+```ruby Fluxon
+current = now()
+```
+
+<Note>如果只使用 `now()`，无需导入 `fs:time`。</Note>
+
+## 格式化与解析
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `formatDateTime` | `time::formatDateTime(pattern?)` | 按 `SimpleDateFormat` 模式格式化当前时间，默认 `yyyy-MM-dd HH:mm:ss`。 |
+| `formatTimestamp` | `time::formatTimestamp(timestamp,pattern?)` | 将任意毫秒时间戳格式化为字符串。 |
+| `parseDateTime` | `time::parseDateTime(text,pattern)` | 解析给定格式的时间文本，返回毫秒时间戳，解析失败抛异常。 |
+
+```ruby Fluxon
+formatted = time::formatTimestamp(&current, 'yyyy/MM/dd HH:mm:ss')
+```
+
+## 当前时间各组件
+
+| 函数 | 返回 | 说明 |
+| --- | --- | --- |
+| `year` | `int` | 当年。 |
+| `month` | `int` | 月份（1-12）。 |
+| `day` | `int` | 日期。 |
+| `hour` | `int` | 24 小时制小时。 |
+| `minute` | `int` | 分钟。 |
+| `second` | `int` | 秒。 |
+| `weekday` | `int` | `Calendar.DAY_OF_WEEK` 值（1=周日，7=周六）。 |
+
+```ruby Fluxon
+currentYear = time::year()
+```
+
+## 指定时间戳的组件
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `yearFromTimestamp` | `time::yearFromTimestamp(ts)` | 以毫秒时间戳求年份。 |
+| `monthFromTimestamp` | `time::monthFromTimestamp(ts)` | 返回月份（1-12）。 |
+| `dayFromTimestamp` | `time::dayFromTimestamp(ts)` | 返回日期。 |
+| `hourFromTimestamp` | `time::hourFromTimestamp(ts)` | 提取小时。 |
+| `minuteFromTimestamp` | `time::minuteFromTimestamp(ts)` | 提取分钟。 |
+| `secondFromTimestamp` | `time::secondFromTimestamp(ts)` | 提取秒。 |
+
+## 时间运算
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `addDays` | `time::addDays(ts, days)` | 累加天数。 |
+| `addHours` | `time::addHours(ts, hours)` | 累加小时。 |
+| `addMinutes` | `time::addMinutes(ts, minutes)` | 累加分钟。 |
+| `addSeconds` | `time::addSeconds(ts, seconds)` | 累加秒。 |
+| `daysBetween` | `time::daysBetween(ts1, ts2)` | 计算天数差值。 |
+| `hoursBetween` | `time::hoursBetween(ts1, ts2)` | 计算小时差值。 |
+| `minutesBetween` | `time::minutesBetween(ts1, ts2)` | 计算分钟差值。 |
+| `secondsBetween` | `time::secondsBetween(ts1, ts2)` | 计算秒差值。 |
+
+## 时间比较与边界
+
+| 函数 | 说明 |
+| --- | --- |
+| `isToday` | `time::isToday(ts)` | 判断指定时间戳是否为今天。 |
+| `isYesterday` | `time::isYesterday(ts)` | 判断指定时间戳是否为昨天。 |
+| `isTomorrow` | `time::isTomorrow(ts)` | 判断指定时间戳是否为明天。 |
+| `isBetween` | `time::isBetween(ts, start, end)` | 判断时间戳是否落在闭区间 `[start, end]`。 |
+| `startOfDay` | `time::startOfDay(ts)` | 时间戳归一化到当天 00:00:00.000。 |
+| `endOfDay` | `time::endOfDay(ts)` | 时间戳归一化到当天 23:59:59.999。 |
+| `startOfMonth` | `time::startOfMonth(ts)` | 月初边界。 |
+| `endOfMonth` | `time::endOfMonth(ts)` | 月末边界。 |
+| `startOfYear` | `time::startOfYear(ts)` | 年初边界。 |
+| `endOfYear` | `time::endOfYear(ts)` | 年末边界。 |
+
+## 示例：生成定时窗口
+
+```ruby Fluxon
+import 'fs:time'
+
+nowTs = now()
+windowStart = time::startOfDay(&nowTs)
+windowEnd = time::endOfDay(&nowTs)
+
+if time::isBetween(&nowTs, &windowStart, &windowEnd) {
+    print('still today: ' + time::formatTimestamp(&nowTs))
+}
+```
+
+这些时间函数均基于 `Calendar`，自动采用宿主 JVM 的默认时区与地区设定。

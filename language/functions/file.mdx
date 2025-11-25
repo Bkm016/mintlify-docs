@@ -1,0 +1,135 @@
+---
+title: "文件与路径函数"
+---
+
+当前模块负责 `java.io.File` 与 `java.nio.file.Path` 的创建及扩展方法。  
+引用前需在脚本顶部导入命名空间：
+
+```ruby Fluxon
+import 'fs:io'
+```
+
+## 构造对象
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `path` | `path(segment)` | 返回 `Path` 对象。直接解析单个路径段。 |
+| `path` | `path(parent,child)` | 返回 `Path` 对象。按 `Paths.get(parent, child)` 规则拼接两个路径段。 |
+| `file` | `file(path)` | 创建 `File` 对象。 |
+| `file` | `file(parent,child)` | 创建 `File` 对象。`parent` 可以是 `File` 或任意可转字符串的对象。 |
+
+```ruby Fluxon
+logPath = path('logs/app.log')
+logFile = file('logs/app.log')
+```
+
+## File 扩展函数
+
+所有 `File` 实例都带有以下扩展，可通过 `file('a.txt')::readText()` 调用。
+
+### 路径与元数据
+
+| 函数 | 说明 |
+| --- | --- |
+| `name()` | 返回文件名。 |
+| `path()` | 返回原始路径字符串。 |
+| `absolutePath()` | 返回绝对路径字符串。 |
+| `canonicalPath()` | 返回规范路径字符串（可能抛出 IO 异常）。 |
+| `parent()` | 返回父路径字符串。 |
+| `parentFile()` | 返回父目录 `File` 对象。 |
+| `toPath()` | 转为 `Path`，方便与 `Path` 扩展混用。 |
+| `extension()` | 返回文件扩展名。 |
+| `nameWithoutExtension()` | 返回去扩展名的文件名。 |
+| `exists()` | 检查文件是否存在。 |
+| `isDirectory()` | 检查是否为目录。 |
+| `isFile()` | 检查是否为普通文件。 |
+| `length()` | 返回文件大小（字节）。 |
+| `lastModified()` | 返回最后修改时间戳。 |
+
+### 目录遍历
+
+| 函数 | 说明 |
+| --- | --- |
+| `list()` | 返回子项名称列表，失败时为空列表。 |
+| `listFiles()` | 返回子项 `File` 列表。 |
+| `walk(maxDepth?)` | 递归遍历目录树，默认无深度限制，返回 `File` 列表。 |
+
+### 创建、删除与重命名
+
+| 函数 | 说明 |
+| --- | --- |
+| `mkdir()` | 创建单层目录。 |
+| `mkdirs()` | 创建多层目录。 |
+| `createNewFile()` | 创建空文件，若失败抛出异常。 |
+| `delete()` | 立即删除文件或目录。 |
+| `deleteOnExit()` | 在 JVM 退出后删除。 |
+| `deleteRecursively()` | 递归删除整棵目录树。 |
+| `renameTo(target)` | 将当前文件重命名/移动到目标路径或 `File`。 |
+
+### 读写与追加
+
+| 函数 | 说明 |
+| --- | --- |
+| `readText()` | 以 UTF-8 读取全文。 |
+| `readLines()` | 按行读取文本。 |
+| `readBytes()` | 读取原始字节。 |
+| `writeText(text)` | 覆盖写入 UTF-8 文本，返回当前 `File` 以便继续链式调用。 |
+| `writeLines(lines)` | 将 `List` 或任意对象写成多行（自动调用 `toString()`）。 |
+| `writeBytes(bytes)` | 覆盖写入字节数组或字符串（UTF-8 编码）。 |
+| `appendText(text)` | 以 `FileWriter` 追加文本。 |
+
+### 复制与移动
+
+| 函数 | 说明 |
+| --- | --- |
+| `copyTo(target,replaceExisting?)` | 调用 `Files.copy`。`replaceExisting` 默认为 `false`。返回目标 `File`。 |
+| `moveTo(target,replaceExisting?)` | 调用 `Files.move`，语义同上。 |
+| `copyRecursively(target,replaceExisting?)` | 递归复制整个目录树，必要时自动创建结构。 |
+
+## Path 扩展函数
+
+`path()` 或 `File::toPath()` 产出的 `Path` 也附带一组扩展。
+
+### 路径操作
+
+| 函数 | 说明 |
+| --- | --- |
+| `name()` | 末级名称。 |
+| `parent()` | 父路径。 |
+| `root()` | 根路径。 |
+| `resolve(other)` | 解析子路径或相对路径。 |
+| `relativize(otherPath)` | 计算相对路径，`otherPath` 可为 `Path` 或字符串。 |
+| `normalize()` | 去掉多余的 `.`、`..`。 |
+| `toAbsolutePath()` | 生成绝对路径。 |
+| `toRealPath()` | 生成真实路径（可能抛异常）。 |
+| `toFile()` | 转回 `File` 以便复用 File 扩展。 |
+
+### 状态与遍历
+
+| 函数 | 说明 |
+| --- | --- |
+| `exists()` | `Files.exists`。 |
+| `notExists()` | `Files.notExists`。 |
+| `isDirectory()` | 检查是否为目录。 |
+| `isRegularFile()` | 检查是否为普通文件。 |
+| `isSymbolicLink()` | 检查是否为符号链接。 |
+| `walk(maxDepth?)` | 与 `File::walk` 类似，但返回 `Path` 列表。 |
+
+## 实用示例
+
+```ruby Fluxon
+import 'fs:io'
+
+projectDir = path('..', 'fluxon')
+logs = file(&projectDir, 'logs')
+&logs::mkdirs()
+
+info = file(&logs, 'latest.log')
+&info::writeLines(['Fluxon started', 'port=8080'])
+
+# 复制并归档
+archive = file(&logs, 'latest.bak')
+&info::copyTo(&archive, true)
+```
+
+通过这些扩展，可以在脚本中完成大部分文件系统任务，而无需直接调用宿主语言 API。

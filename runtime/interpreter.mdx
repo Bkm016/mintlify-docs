@@ -1,0 +1,43 @@
+---
+title: "解释器执行流"
+description: ""
+---
+
+Fluxon 的解释器建立在 `Function` 接口与 `FunctionContext` 之上。`core/runtime` 中的相关类定义了函数调用的全部语义：目标对象、参数、环境以及异步属性。本文结合源码梳理解释执行路径。
+
+## 函数抽象：`Function` 与 `NativeFunction`
+
+- `Function` 是一个极简接口，定义名称、命名空间、参数个数、异步标记、主线程标记以及 `call(FunctionContext)` 方法。
+- `NativeFunction` 实现了 `Function` 与 `Symbolic`，构造时绑定 `SymbolFunction` 与 `NativeCallable`。
+- 异步/主线程标记直接来源于注册 API：
+  - `registerAsyncFunction` -> `isAsync = true`。
+  - `registerPrimarySyncFunction` -> `isPrimarySync = true`，解释器可据此切换到 `FluxonRuntime#getPrimaryThreadExecutor`。
+
+## 调用上下文：`FunctionContext`
+
+- 每次调用都会创建 `FunctionContext`，其中包含：
+  - 当前 `Function`。
+  - `target`（上下文调用时的宿主对象）。
+  - 参数数组与参数数量。
+  - 共享的 `Environment`。
+- 提供丰富的便捷方法：`getNumber`, `getBoolean`, `getString`, `getFunction` 等，会自动做类型检查并在失败时抛出 `ArgumentTypeMismatchError`。
+- `updateArguments` 允许重用同一 `FunctionContext`，以降低高频调用的分配成本。
+
+## 脚本基类：`RuntimeScriptBase`
+
+- 编译器在编译脚本时会生成继承 `RuntimeScriptBase` 的 Java 类。
+- 核心 API：
+  - `eval(Environment env)`：解释器入口，通常由生成的类覆写。
+  - `assign` / `get`：与 `Environment` 打通，用于读写局部或根变量。
+  - `callFunction`：调用另一个函数时的辅助方法，内部会创建新的 `FunctionContext`。
+- 由于脚本类持有 `Environment` 引用，因此可以在解释执行与编译执行之间复用同一套状态。
+
+## 全局对象与上下文调用
+
+- 运行时在初始化时注册了一个 `g` 函数，返回 `GlobalObject.INSTANCE`。当脚本内部需要访问全局命名空间或调用 `g::someExtension()` 时，这个对象提供了固定的锚点。
+- `Environment#setTarget` 与 `FunctionContext#getTarget` 一起实现 `value :: func()` 语法，使得扩展函数可以天然融入解释器。
+
+## 调试建议
+
+- 当遇到“函数找不到”或“参数类型错误”时，可以直接打印 `FunctionContext#toString()`，其中包含函数名、目标对象与参数信息。
+- 需要追踪异步调用是否落在正确线程，可检查 `Function#isAsync` 与 `Function#isPrimarySync`，并在调度器（见《编译执行》章节）中观察线程名称。
