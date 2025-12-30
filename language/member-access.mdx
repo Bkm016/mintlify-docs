@@ -6,7 +6,7 @@ description: "通过反射读取对象属性/字段并调用方法"
 成员访问运算符 `.` 用于在对象上读取属性（字段/Getter）或调用方法，例如 `obj.name`、`obj.size()`。
 
 <Warning>
-`.` 基于 Java 反射实现，默认在嵌入式场景中关闭；如果你在宿主侧执行脚本，需要显式开启反射访问（见下文）。
+该特性基于 Java 反射实现，默认在嵌入式场景中关闭；如果你在宿主侧执行脚本，需要显式开启。
 </Warning>
 
 ## 基本语法
@@ -105,5 +105,6 @@ name = if &user != null then &user.name else "anonymous"
 
 - [运算符与优先级](/language/operators-and-priority)
 - [函数与异步（上下文调用 ::）](/language/functions-and-async)
+- [Java 互操作](/language/java-interop)
 - [扩展函数 API](/developer/extension-api)
 - [术语表](/appendix/glossary)

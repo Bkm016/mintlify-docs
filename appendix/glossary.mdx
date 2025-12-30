@@ -16,6 +16,7 @@ description: "Fluxon 相关的术语与符号说明"
 | `?:` | Elvis（空合并）：左侧为 `null` 时返回右侧默认值，如 `&name ?: "anonymous"`。 |
 | `..` / `..<` | 区间运算符：闭区间与左闭右开区间。 |
 | `async def` / `sync def` / `await` | 异步与调度：`async def` 在线程池执行，`sync def` 在主线程执行器上执行，`await` 等待异步结果。 |
+| `new` / `static` | Java 互操作：`new` 构造对象，`static` 访问静态字段/方法（可选特性，默认关闭）。见 [Java 互操作（new/static）](/language/java-interop)。 |
 | `import 'xxx'` | 导入命名空间或包名。导入命名空间（如 `fs:time`）后，带 `namespace` 的函数/扩展才会参与解析。 |
 
 ## 运行时与扩展

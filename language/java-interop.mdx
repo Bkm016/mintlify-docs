@@ -1,0 +1,132 @@
+---
+title: "Java 互操作"
+description: "在脚本中构造对象与访问静态成员"
+---
+
+Fluxon 提供两类可选的 Java 互操作表达式：
+
+- `new`：构造任意 Java 类的实例。
+- `static`：访问 Java 类的静态字段或调用静态方法。
+
+<Warning>
+该特性基于 Java 反射实现，默认在嵌入式场景中关闭；如果你在宿主侧执行脚本，需要显式开启。
+</Warning>
+
+## 启用方式
+
+### 宿主集成（Java）
+
+`new/static` 由 `CompilationContext#allowJavaConstruction` 控制（默认 `false`）：
+
+```java
+import org.tabooproject.fluxon.compiler.CompilationContext;
+
+CompilationContext ctx = new CompilationContext("...");
+ctx.setAllowJavaConstruction(true);
+```
+
+如果你还希望在 `new/static` 的结果上使用成员访问 `.`（反射），需要同时启用：
+
+```java
+ctx.setAllowReflectionAccess(true);
+```
+
+也可以通过全局默认值启用（不建议对不可信脚本使用）：
+
+```java
+import org.tabooproject.fluxon.compiler.FluxonFeatures;
+
+FluxonFeatures.DEFAULT_ALLOW_JAVA_CONSTRUCTION = true;
+```
+
+### CLI / REPL
+
+交互式控制台通常会默认启用 `new/static` 与成员访问 `.`，因此在 REPL 中使用往往不需要额外配置
+（见 [命令行与 REPL](/guides/cli)）。
+
+## `new`：构造对象
+
+语法：
+
+```fluxon
+new fully.qualified.ClassName(args...)
+```
+
+要点：
+
+- 类名必须是 **全限定名**（例如 `java.util.ArrayList`），不会自动根据 `import` 推断。
+- 参数是普通表达式；构造函数会按实参类型匹配最合适的重载（不匹配会报错）。
+
+示例：
+
+```fluxon
+list = new java.util.ArrayList()
+size = &list::size()
+```
+
+构造并传入集合参数（复制构造）：
+
+```fluxon
+original = [1, 2, 3]
+copy = new java.util.ArrayList(&original)
+&copy::size()
+```
+
+如果开启了成员访问 `.`，也可以直接对新对象做链式成员访问：
+
+```fluxon
+new java.util.ArrayList().class.simpleName
+```
+
+## `static`：访问静态成员
+
+语法：
+
+```fluxon
+static fully.qualified.ClassName.FIELD
+static fully.qualified.ClassName.method(args...)
+```
+
+示例（静态方法）：
+
+```fluxon
+static java.lang.Integer.parseInt("42")
+```
+
+示例（静态字段/常量）：
+
+```fluxon
+static java.lang.Integer.MAX_VALUE
+static java.lang.Integer.MIN_VALUE
+```
+
+### 括号语法（消除歧义 + 支持链式）
+
+当你需要在静态字段结果上继续做 `.member` 链式访问时，建议使用括号语法锁定类名：
+
+```fluxon
+static (java.lang.System).out.println("hello")
+```
+
+原因是：不带括号时，解析会把最后一个 `.` 之前的内容当作“类名”，因此
+`static java.lang.System.out.println(...)` 会被解析为类 `java.lang.System.out` 的静态方法 `println(...)`，从而导致类找不到。
+
+括号语法同样适用于“静态字段 → 实例方法”的组合：
+
+```fluxon
+static (java.lang.Integer).TYPE.getName()
+```
+
+## 常见错误与边界
+
+- 特性未开启：解析阶段会报错并提示 `ctx.setAllowJavaConstruction(true)`。
+- 类不存在：`Class not found: <className>`。
+- 成员/构造函数不存在或不匹配：会抛出 `MemberNotFoundError` 或运行时异常（取决于调用点）。
+- 安全风险：`new/static` 允许脚本触达任意可见的 Java API；对不可信脚本请保持禁用。
+
+## 相关链接
+
+- [成员访问（.）](/language/member-access)
+- [系统函数（forName/call）](/language/functions/system)
+- [运行时注册 API](/developer/runtime-registry)
+- [扩展函数 API](/developer/extension-api)

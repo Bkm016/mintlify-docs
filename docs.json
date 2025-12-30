@@ -38,7 +38,8 @@
               "language/operators-and-priority",
               "language/control-flow",
               "language/functions-and-async",
-              "language/member-access"
+              "language/member-access",
+              "language/java-interop"
             ]
           },
           {

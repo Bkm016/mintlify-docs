@@ -50,6 +50,8 @@ print("after")
 | `forName` | `forName(className)` | 加载指定的宿主类并返回对应 Class 对象。 |
 | `call` | `call(func)` / `call(func, args)` | 调用运行时函数或已获取的函数对象，可选以数组形式传入参数列表。 |
 
+<Note>如需在脚本中直接构造对象或访问静态成员，可使用 `new` / `static`（需启用特性），见 [Java 互操作](/language/java-interop)。</Note>
+
 示例：
 
 ```fluxon
