@@ -23,7 +23,7 @@
           },
           {
             "group": "工具与生态",
-            "pages": ["tooling/vscode", "tooling/catalog"]
+            "pages": ["tooling/vscode", "tooling/prompt"]
           }
         ]
       },
@@ -71,7 +71,7 @@
         "groups": [
           {
             "group": "API 入口",
-            "pages": ["developer/runtime-registry", "developer/export-bridge"]
+            "pages": ["developer/runtime-registry", "developer/commands", "developer/export-bridge"]
           },
           {
             "group": "扩展与注解",
@@ -87,7 +87,6 @@
               "developer/best-practices",
               "developer/testing",
               "developer/documentation",
-              "developer/contributing",
               "developer/release"
             ]
           }

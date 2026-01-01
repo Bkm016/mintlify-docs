@@ -4,7 +4,7 @@ description: "介绍 fluxon CLI、脚本执行与交互式体验"
 ---
 
 Fluxon 提供一个交互式控制台（REPL）。它适合用来试验语法、验证表达式结果与快速排错。入口类是
-`org.tabooproject.fluxon.FluxonConsole`（`core-console` 模块）。
+`org.tabooproject.fluxon.FluxonConsole`。
 
 ## 启动控制台
 
@@ -15,7 +15,6 @@ Fluxon 提供一个交互式控制台（REPL）。它适合用来试验语法、
 ```
 
 如需 `installDist` 生成可分发脚本、查看完整内置命令表或导出函数目录，请参阅 [CLI 参考](/appendix/cli-reference)。
-
 启动后会出现 `fluxon> ` 提示符；控制台会在用户家目录创建 `.fluxon_history` 保存历史记录。
 
 ## 输入第一段脚本
@@ -27,7 +26,8 @@ fluxon> print("Hello Fluxon")
 Hello Fluxon
 ```
 
-- 如果表达式有返回值，控制台会额外打印结果，并将其保存到特殊变量 `_`（返回 `null` 时不会覆盖旧值）：
+- 如果表达式有返回值，控制台会额外打印结果，并将其保存到特殊变量 `_`。
+- 返回 `null` 时不会覆盖旧值。
 
 ```fluxon
 fluxon> 1 + 2

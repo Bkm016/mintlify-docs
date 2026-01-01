@@ -9,7 +9,7 @@ Fluxon 官方 VS Code 扩展为 `.fs` 文件与 YAML 嵌入块带来语法高亮
 ## 功能概览
 
 - **语法高亮**：覆盖关键字、变量引用、运算符与注解块。
-- **智能补全**：关键字、系统函数、扩展函数、链式 `::` 调用及当前工作区的 `def`/`fun` 块均可被建议，并附带参数占位符。
+- **基本补全**：关键字、系统函数、扩展函数、链式 `::` 调用及当前工作区的 `def`/`fun` 块均可被建议，并附带参数占位符。
 - **注解提示**：输入 `@` 即出现内置注解（默认 `@except`）模板。
 - **代码片段**：`def`、`when`、`try` 等前缀可展开为常用结构；括号与引号自动闭合。
 - **YAML 嵌入**：在 YAML 中使用 `: ;` 启用 Fluxon 区块，补全与语法提示与 `.fs` 文件一致。
@@ -44,8 +44,8 @@ pnpm run package      # 生成 dist/fluxon-*.vsix
 | 命令 | 说明 |
 | --- | --- |
 | `Fluxon: Refresh Function Catalog` | 立即重新加载 `fluxon-functions.json`，在添加新函数后刷新补全。 |
-| `Toggle Line Comment` (`Ctrl+/`) | 针对 Fluxon 语法插入 `#` 注释。 |
-| `Toggle Block Comment` (`Shift+Alt+A`) | 插入 `/* ... */` 区块注释，支持多光标。 |
+| `Toggle Line Comment` 		     | 针对 Fluxon 语法插入 `#` 注释。 |
+| `Toggle Block Comment`			 | 插入 `/* ... */` 区块注释，支持多光标。 |
 
 常用片段前缀：`def`、`defb`、`async`、`for`、`when`、`try`、`import`、`@`。
 
@@ -55,11 +55,11 @@ pnpm run package      # 生成 dist/fluxon-*.vsix
 
 | 键 | 默认值 | 作用 |
 | --- | --- | --- |
-| `fluxonCompletion.catalogPath` | *(空)* | 自定义函数目录路径（如 `${workspaceFolder}/core/build/fluxon-functions.json`）。 |
+| `fluxonCompletion.catalogPath` | *(空)* | 自定义函数目录路径。 |
 | `fluxonCompletion.showNamespaces` | `true` | 在补全项中显示命名空间，方便区分系统/扩展函数。 |
 | `fluxonCompletion.enableExtensions` | `true` | 控制是否在 `object::` 上下文提供扩展函数提示。 |
 | `fluxonCompletion.includeUserFunctions` | `true` | 扫描当前工作区 `.fs` 文件并补全用户自定义函数。 |
-| `fluxonCompletion.trace` | `off` | 补全日志级别（`off`/`basic`/`verbose`）。 |
+| `fluxonCompletion.trace` | `off` | 补全日志级别。 |
 
 ## 函数目录同步
 

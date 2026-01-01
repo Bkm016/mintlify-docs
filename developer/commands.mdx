@@ -1,0 +1,150 @@
+---
+title: "Command 接口"
+description: "用 CommandRegistry/CommandParser/CommandExecutor 扩展 Fluxon 语法"
+---
+
+Command 是 Fluxon 的“解析阶段扩展点”。
+当解析器读到一个标识符，并且该名称已在 `CommandRegistry` 注册时，
+它会把这一段当作 command 解析，而不是普通标识符/函数调用。
+
+Fluxon 默认不内置任何 command：是否存在、叫什么名字、怎么解析参数，都由宿主在启动时注册决定。
+
+## 适用场景
+
+- 你希望写成 DSL 风格的语句：`give-item "diamond" 64`。
+- 你需要自定义参数语法（不仅是 `func(a, b)` 这种固定形态）。
+- 你想把宿主侧的“指令/动作”封装成脚本表达式并返回结果。
+
+## 与函数/扩展函数的区别
+
+| 机制 | 调用形态 | 主要入口 | 是否可编译 |
+| --- | --- | --- | --- |
+| 函数 | `func(1, 2)` | `FluxonRuntime#registerFunction` | ✅ |
+| 扩展函数 | `target::method(...)` | `FluxonRuntime#registerExtension` | ✅ |
+| Command | `command arg...` | `CommandRegistry#register` | ❌（仅解释执行） |
+
+<Note>
+Command 的字节码生成会抛 `UnsupportedOperationException`，因此含 command 的脚本不要走
+[编译执行引擎](/runtime/execution-engine)。
+</Note>
+
+## 组成与执行流程
+
+| 组件 | 作用 |
+| --- | --- |
+| `CommandRegistry` | 注册表：`commandName -> (parser, executor)` |
+| `CommandParser<T>` | 解析阶段：消费 token，并返回解析结果 `T` |
+| `CommandExecutor<T>` | 执行阶段：拿到 `Interpreter` 与解析结果 `T` 执行业务 |
+| `CommandSyntaxMacro` | 内置语法宏：命中已注册标识符（优先级 1000） |
+| `CommandExpression` | AST 节点：在解析时捕获 executor，运行时直接调用 |
+
+执行大致流程：
+
+1. Parser 读到 `IDENTIFIER`，`CommandSyntaxMacro` 发现已注册同名 command。
+2. 先消费 command 名称 token，再调用 `CommandParser#parse(...)` 解析后续参数。
+3. 解析结果与 `CommandExecutor` 一起被封装进 `CommandExpression`。
+4. Interpreter 执行到该节点时，直接调用 executor 并返回结果。
+
+## 注册与隔离
+
+### 使用全局主注册表（最常见）
+
+在应用启动时注册即可（建议注册阶段单线程）：
+
+```java
+CommandRegistry.primary().register("set-var", parser, executor);
+```
+
+### 为沙箱/多租户使用独立注册表
+
+如果你需要“每份脚本一套 command 集合”，可以创建独立实例并放到 `CompilationContext`：
+
+```java
+CommandRegistry registry = new CommandRegistry();
+registry.register("set-var", parser, executor);
+
+CompilationContext ctx = new CompilationContext(source);
+ctx.setCommandRegistry(registry);
+
+Environment env = FluxonRuntime.getInstance().newEnvironment();
+List<ParseResult> ast = Fluxon.parse(env, ctx);
+Object result = Fluxon.eval(ast, env);
+```
+
+<Note>
+如果你也自定义了 `SyntaxMacroRegistry`，记得把 `CommandSyntaxMacro` 放进去；
+否则即使 registry 有 command，解析器也不会命中。
+</Note>
+
+## 最小示例：实现 `set-var`
+
+这个 command 语法为：`set-var <name> <valueExpr>`。
+它把 `<valueExpr>` 求值后写入根变量，并返回该值。
+
+```java
+import org.tabooproject.fluxon.Fluxon;
+import org.tabooproject.fluxon.compiler.CompilationContext;
+import org.tabooproject.fluxon.lexer.Token;
+import org.tabooproject.fluxon.lexer.TokenType;
+import org.tabooproject.fluxon.parser.CommandExecutor;
+import org.tabooproject.fluxon.parser.CommandParser;
+import org.tabooproject.fluxon.parser.CommandRegistry;
+import org.tabooproject.fluxon.parser.ParseResult;
+import org.tabooproject.fluxon.parser.Parser;
+import org.tabooproject.fluxon.runtime.Environment;
+import org.tabooproject.fluxon.runtime.FluxonRuntime;
+
+import java.util.List;
+
+public final class CommandDemo {
+
+  static final class SetVarData {
+    final String name;
+    final ParseResult valueExpr;
+
+    SetVarData(String name, ParseResult valueExpr) {
+      this.name = name;
+      this.valueExpr = valueExpr;
+    }
+  }
+
+  public static void main(String[] args) {
+    CommandParser<SetVarData> parser = (Parser p, Token commandToken) -> {
+      String name = p.consume(TokenType.IDENTIFIER, "Expected variable name").getLexeme();
+      ParseResult valueExpr = p.parseExpression();
+      return new SetVarData(name, valueExpr);
+    };
+
+    CommandExecutor<SetVarData> executor = (interpreter, data) -> {
+      Object value = interpreter.evaluate(data.valueExpr);
+      interpreter.getEnvironment().defineRootVariable(data.name, value);
+      return value;
+    };
+
+    CommandRegistry.primary().register("set-var", parser, executor);
+
+    String source = "set-var username \\\"fluxon\\\"; &username";
+    Environment env = FluxonRuntime.getInstance().newEnvironment();
+    List<ParseResult> ast = Fluxon.parse(env, new CompilationContext(source));
+    System.out.println(Fluxon.eval(ast, env));
+  }
+}
+```
+
+## 注意事项
+
+- **命名规则**：command 名称是标识符（`IDENTIFIER`），允许包含 `-`（例如 `give-item`）。
+- **命名冲突**：command 的匹配发生在“标识符兜底”之前，
+  如果你注册了与函数/变量同名的 command，会改变解析结果。
+- **解析要消费完整**：`CommandParser` 必须把它负责的 token 消费完，
+  否则后续解析会报位置看似不相关的错误。
+- **错误要可定位**：
+  - 解析阶段用 `ParseException`（通过 `parser.consume(..., "message")` 自动生成）。
+  - 运行阶段建议抛出自定义 `FluxonRuntimeError` 子类，以获得 SourceTrace。
+
+## 相关链接
+
+- [运行时注册 API](/developer/runtime-registry)
+- [扩展函数 API](/developer/extension-api)
+- [命令行与 REPL](/guides/cli)
+- [编译执行引擎](/runtime/execution-engine)

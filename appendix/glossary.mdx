@@ -13,6 +13,7 @@ description: "Fluxon 相关的术语与符号说明"
 | `_` | REPL 中保存上一次表达式结果的特殊变量（返回 `null` 时不会覆盖旧值）。 |
 | `::` | 上下文调用：将函数绑定到目标对象上执行，常用于扩展函数。示例：`&list :: size()`、`text::uppercase()::split(" ")`。 |
 | `.` | 成员访问（反射）：读取对象字段/属性或调用方法（如 `&e.message`、`&list.size()`）。嵌入式集成默认关闭，见 [成员访问（.）](/language/member-access)。 |
+| `it` | `\|\| expr` 形式 lambda 的隐式参数名（在体内用 `&it` 读取）。 |
 | `?:` | Elvis（空合并）：左侧为 `null` 时返回右侧默认值，如 `&name ?: "anonymous"`。 |
 | `..` / `..<` | 区间运算符：闭区间与左闭右开区间。 |
 | `async def` / `sync def` / `await` | 异步与调度：`async def` 在线程池执行，`sync def` 在主线程执行器上执行，`await` 等待异步结果。 |
@@ -23,13 +24,13 @@ description: "Fluxon 相关的术语与符号说明"
 
 | 术语 | 含义 |
 | --- | --- |
-| `namespace` | 命名空间前缀，形如 `fs:time`。通过 `import 'fs:time'` 引入，避免与全局函数重名。 |
+| 扩展函数 | 针对特定宿主类型的 `target::method()` 调用，由 `FluxonRuntime#registerExtensionFunction` 注册。 |
 | `primarySync` | 函数属性：表示必须在主线程执行器上运行（宿主提供执行器）。注册方式与边界见 [运行时注册 API](/developer/runtime-registry)。 |
-| 扩展函数（extension function） | 针对特定宿主类型的 `target::method()` 调用，由 `FluxonRuntime#registerExtensionFunction` 注册。 |
+| `Command` | 解析阶段扩展点：匹配已注册标识符并执行宿主逻辑，见 [Command 接口](/developer/commands)。 |
 | `FunctionContext` | 执行期上下文，提供参数获取与类型校验（如 `getNumber`）；类型不符会抛出 `ArgumentTypeMismatchError`。 |
 | `Environment` | 执行期符号表与栈信息，由 `FluxonRuntime#newEnvironment()` 创建。 |
 | `bake` | `FluxonRuntime` 将注册表转换为数组缓存的过程；注册变更会在下次创建环境时重建缓存。 |
-| `GlobalObject` / `g()` | 运行时默认注册的全局入口，便于在上下文调用中访问全局函数。 |
+| `GlobalObject` | 运行时默认注册的全局入口，便于在上下文调用中访问全局函数。 |
 
 ## 工具与资产
 

@@ -43,13 +43,13 @@ System.out.println(out);
 - 运行时错误会通过 `RuntimeScriptBase#attachRuntimeError(...)` 补充源码摘录，便于定位行列。
 - 生成类会实现 `clone()`，用于复制脚本实例（避免共享可变状态）。
 
-## 索引访问器（`org.tabooproject.fluxon.runtime.index`）
+## 索引访问器
 
 - `IndexAccessor` 抽象了 `target[index]` 的读写行为，既可服务解释器，也可让编译器在遇到 `[]` 语法时绑定到正确的宿主类型。
 - `IndexAccessorRegistry` 利用 Java SPI 自动加载第三方实现，并允许在运行时调用 `registerAccessor` 提高优先级。
 - 索引访问由 `Intrinsics` 统一派发到底层注册表，因此解释与编译模式共享同一套行为与错误类型（如 `IndexAccessError`）。
 
-## 导出桥（`org.tabooproject.fluxon.runtime.java`）
+## 导出桥
 
 - `ExportRegistry` 扫描 `@Export` 方法并注册为扩展函数；底层通过 `ClassBridge`（字节码生成）避免反射调用。
 - 编译后的脚本在调用处仍会走相同的派发链路：
