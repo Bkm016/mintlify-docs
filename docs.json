@@ -61,6 +61,10 @@
             "pages": ["runtime/environment", "runtime/interpreter", "runtime/execution-engine"]
           },
           {
+            "group": "高级特性",
+            "pages": ["runtime/bytecode-injection"]
+          },
+          {
             "group": "集成",
             "pages": ["runtime/jsr223"]
           }

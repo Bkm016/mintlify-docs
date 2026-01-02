@@ -1,0 +1,312 @@
+---
+title: "运行时字节码注入"
+description: "通过 fs:jvm 模块动态修改 Java 方法行为"
+---
+
+`fs:jvm` 模块提供运行时字节码注入能力，可以在 JVM 运行时动态拦截 Java 方法调用，插入自定义逻辑或完全替换方法实现。这为运行时调试、热修复、AOP（面向切面编程）等场景提供了强大支持。
+
+<Note>
+此功能需要 Java Agent 支持，启动 JVM 时需要添加 `-javaagent` 参数。详见[前置要求](#前置要求)。
+</Note>
+
+## 前置要求
+
+### 1. 启动 Java Agent
+
+在 JVM 启动参数中添加：
+
+```bash
+java -javaagent:fluxon-core-agent.jar -jar your-app.jar
+```
+
+或使用 Gradle 运行：
+
+```kotlin
+tasks.withType<JavaExec> {
+    jvmArgs("-javaagent:build/libs/fluxon-core-agent.jar")
+}
+```
+
+### 2. 导入模块
+
+在 Fluxon 脚本中导入 `fs:jvm` 模块：
+
+```fluxon
+import 'fs:jvm'
+```
+
+## 快速上手
+
+### 拦截方法调用（before）
+
+在方法执行前插入逻辑，不影响原方法执行：
+
+```fluxon
+import 'fs:jvm'
+
+// 拦截 System.out.println 调用
+id = jvm::inject(
+    "java.io.PrintStream::println",
+    "before",
+    |self, message| {
+        println("[LOG] " + &message)
+        // 返回值被忽略，原方法继续执行
+    }
+)
+```
+
+### 替换方法实现（replace）
+
+完全替换方法的原始实现：
+
+```fluxon
+import 'fs:jvm'
+
+// 替换某个业务方法的返回值
+id = jvm::inject(
+    "com.example.UserService::isAdmin",
+    "replace",
+    |self, userId| {
+        // 这里可以访问原方法参数
+        println("isAdmin called with userId: " + &userId)
+        return true  // 强制返回 true
+    }
+)
+```
+
+## API 详解
+
+### inject - 注入拦截器
+
+**签名**：`jvm::inject(target, type, handler) -> String`
+
+注入一个方法拦截器，返回唯一的注入 ID。
+
+**参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `target` | String | 目标方法，格式为 `className::methodName` 或 `className::methodName(descriptor)` |
+| `type` | String | 注入类型，可选 `"before"` 或 `"replace"` |
+| `handler` | Function | 回调函数，签名为 `|self, args...| { ... }` |
+
+**目标格式**：
+
+```fluxon
+// 简单格式（匹配所有重载）
+"com.example.Foo::bar"
+
+// 带描述符（精确匹配）
+"com.example.Foo::bar(Ljava/lang/String;)V"
+```
+
+<Note>
+JVM 方法描述符使用内部格式，例如 `(Ljava/lang/String;I)Z` 表示接受 `String` 和 `int` 参数，返回 `boolean`。
+常见类型映射：`I`=int, `J`=long, `Z`=boolean, `Ljava/lang/String;`=String, `V`=void。
+</Note>
+
+**注入类型**：
+
+- **`"before"`**：在原方法执行前调用 handler，handler 返回值被忽略，原方法继续执行
+- **`"replace"`**：完全替换原方法，handler 返回值作为方法返回值
+
+**Handler 参数**：
+
+- 第一个参数 `self`：
+  - 实例方法：接收 `this` 对象
+  - 静态方法：接收 `null`
+- 后续参数：方法的实际参数，按顺序传递
+
+**示例**：
+
+```fluxon
+import 'fs:jvm'
+
+// 拦截 Thread.sleep
+sleepId = jvm::inject(
+    "java.lang.Thread::sleep(J)V",
+    "before",
+    |self, millis| {
+        println("Thread will sleep for " + &millis + "ms")
+    }
+)
+
+// 替换 Math.random
+randomId = jvm::inject(
+    "java.lang.Math::random",
+    "replace",
+    |self| {
+        return 0.42  // 固定返回值
+    }
+)
+```
+
+### restore - 撤销注入
+
+**签名**：`jvm::restore(idOrTarget) -> Boolean`
+
+撤销一个或多个注入，返回是否成功。
+
+**参数**：
+
+- 传入注入 ID：撤销指定的单个注入
+- 传入目标字符串（包含 `::`）：撤销该方法的所有注入
+
+**示例**：
+
+```fluxon
+import 'fs:jvm'
+
+id = jvm::inject("com.example.Foo::bar", "before", |self| {})
+
+// 按 ID 撤销
+jvm::restore(&id)  // true
+
+// 按目标撤销（删除该方法的所有注入）
+jvm::restore("com.example.Foo::bar")  // true
+```
+
+### injections - 列出所有注入
+
+**签名**：`jvm::injections() -> List<Map>`
+
+返回当前所有活跃的注入信息。
+
+**返回值**：每个 Map 包含以下字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | String | 注入 ID |
+| `target` | String | 目标方法（格式：`className::methodName`） |
+| `type` | String | 注入类型（`"before"` 或 `"replace"`） |
+
+**示例**：
+
+```fluxon
+import 'fs:jvm'
+
+jvm::inject("com.example.Foo::bar", "before", |self| {})
+jvm::inject("com.example.Foo::baz", "replace", |self| { return null })
+
+list = jvm::injections()
+for item in &list {
+    println(&item.id + " -> " + &item.target + " (" + &item.type + ")")
+}
+
+// 输出：
+// inj_1 -> com.example.Foo::bar (before)
+// inj_2 -> com.example.Foo::baz (replace)
+```
+
+## 实战场景
+
+### 调试与日志
+
+在不修改源码的情况下记录方法调用：
+
+```fluxon
+import 'fs:jvm'
+
+// 追踪所有 HTTP 请求
+jvm::inject(
+    "com.example.api.RequestHandler::handle",
+    "before",
+    |self, request| {
+        println("[HTTP] " + &request.method + " " + &request.uri)
+    }
+)
+```
+
+### 热修复
+
+运行时修复生产环境 bug：
+
+```fluxon
+import 'fs:jvm'
+
+// 修复错误的计算逻辑
+jvm::inject(
+    "com.example.billing.Calculator::computeDiscount",
+    "replace",
+    |self, price, rate| {
+        // 修复：原实现忘记除以 100
+        return &price * &rate / 100.0
+    }
+)
+```
+
+### 条件拦截
+
+只在特定条件下拦截：
+
+```fluxon
+import 'fs:jvm'
+
+// 仅拦截特定用户的请求
+jvm::inject(
+    "com.example.UserController::getProfile",
+    "before",
+    |self, userId| {
+        if &userId == "admin" {
+            println("[AUDIT] Admin profile accessed")
+        }
+    }
+)
+```
+
+## 注意事项
+
+### 类加载时机
+
+- 已加载的类：注入会触发 `retransformClasses` 立即生效
+- 未加载的类：注入会在类首次加载时自动应用
+
+### 方法签名
+
+使用带描述符的目标格式可以精确匹配重载方法：
+
+```fluxon
+// 只拦截 println(String)
+jvm::inject("java.io.PrintStream::println(Ljava/lang/String;)V", "before", ...)
+
+// 只拦截 println(int)
+jvm::inject("java.io.PrintStream::println(I)V", "before", ...)
+```
+
+<Warning>
+不带描述符时会匹配**所有同名方法**，可能导致意外行为。生产环境建议始终使用完整签名。
+</Warning>
+
+### 限制
+
+- 不支持注入 JVM 核心类（如 `java.lang.Object`）的 native 方法
+- 不支持注入构造函数（`<init>` 和 `<clinit>`）
+- 注入点过多可能影响类加载性能
+
+## 调试技巧
+
+### 查看当前注入
+
+```fluxon
+import 'fs:jvm'
+
+for injection in jvm::injections() {
+    println(&injection.id + ": " + &injection.target + " [" + &injection.type + "]")
+}
+```
+
+### 清理所有注入
+
+```fluxon
+import 'fs:jvm'
+
+for injection in jvm::injections() {
+    jvm::restore(&injection.id)
+}
+```
+
+## 相关链接
+
+- [扩展函数 API](/developer/extension-api)
+- [运行时注册 API](/developer/runtime-registry)
+- [Java 互操作](/language/java-interop)
