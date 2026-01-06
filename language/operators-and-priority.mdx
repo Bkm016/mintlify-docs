@@ -125,7 +125,9 @@ Fluxon 还提供若干与控制流和语义糖相关的运算符：
 | `?:`     | Elvis 运算符         | `&name ?: "anonymous"`      |
 | `&`      | 变量引用运算符       | `sum = &a + &b`              |
 | `::`     | 上下文调用运算符     | `&list :: size()`            |
+| `?::`    | 安全上下文调用       | `&obj ?:: transform()`       |
 | `.`      | 成员访问（反射）     | `&user.name` / `&list.size()` |
+| `?.`     | 安全成员访问（反射） | `&obj?.name` / `&obj?.size()` |
 
 这些运算符在其他章节中有详细说明，本章主要关心它们在大表达式中的优先级关系。
 
@@ -136,8 +138,8 @@ Fluxon 的表达式解析采用自顶向下递归下降和优先级划分。
 | 类别                     | 示例                             |
 |--------------------------|----------------------------------|
 | 括号与字面量             | `(expr)`、`[1, 2]`、`[k: v]`     |
-| 成员访问与函数调用       | `obj.name`、`obj.method()`、`f(x)` |
-| 上下文调用 `::`          | `&target :: func()`              |
+| 成员访问与函数调用       | `obj.name`、`obj?.name`、`f(x)`  |
+| 上下文调用               | `&target :: func()`、`&obj ?:: transform()` |
 | 一元运算符               | `!expr`、`-expr`、`&name`        |
 | 乘除模                   | `*`、`/`、`%`                    |
 | 加减                     | `+`、`-`                         |
@@ -200,6 +202,46 @@ name = &input ?: "anonymous"
 
 ```fluxon
 value = (&a + &b) ?: 0
+```
+
+### 安全访问运算符
+
+Fluxon 提供两种安全访问运算符，用于处理可能为 `null` 的目标：
+
+#### 安全成员访问 `?.`
+
+当目标为 `null` 时返回 `null`，而不是抛出 `NullPointerException`：
+
+```fluxon
+// 如果 obj 为 null，返回 null
+name = &obj?.name
+length = &obj?.length()
+
+// 链式安全访问
+result = &a?.b?.c
+```
+
+#### 安全上下文调用 `?::`
+
+当目标为 `null` 时返回 `null`，而不是执行右侧的上下文表达式：
+
+```fluxon
+// 如果 obj 为 null，返回 null
+result = &obj ?:: transform()
+result = &obj ?:: { uppercase() }
+
+// 链式安全上下文调用
+result = &obj ?:: transform() ?:: format()
+```
+
+#### 与 Elvis 组合
+
+安全访问常与 Elvis 运算符配合，提供默认值：
+
+```fluxon
+// 安全访问 + 默认值
+name = &user?.name ?: "anonymous"
+size = (&list ?:: size()) ?: 0
 ```
 
 ### 赋值的结合方向
